@@ -238,9 +238,7 @@ void main() {
   test("a relative path can be matched by an absolute glob", () {
     var pattern = separatorToForwardSlash(p.absolute('foo/bar'));
     expect('foo/bar', contains(new Glob(pattern)));
-  }, onPlatform: {
-    'browser': const Skip('Current path in the browser is the HTTP location')
-  });
+  }, testOn: 'vm');
 
   group("with recursive: true", () {
     var glob = new Glob("foo/bar", recursive: true);
