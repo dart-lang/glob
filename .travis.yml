@@ -9,7 +9,7 @@ dart:
 
 # See https://docs.travis-ci.com/user/languages/dart/ for details.
 dart_task:
-  - test: --platform vm,dartium,firefox -j 1
+  - test: --platform vm,dartium,firefox
     install_dartium: true
   - dartanalyzer
 
