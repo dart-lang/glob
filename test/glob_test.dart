@@ -17,6 +17,27 @@ void main() {
     });
   });
 
+  group('Glob.union()', () {
+    test('returns the union of both globs', () {
+      var globA = new Glob('a*');
+      var globB = new Glob('b*');
+      var result = globA.union(globB);
+      expect(result.matches('anteater'), isTrue);
+      expect(result.matches('baterang'), isTrue);
+      expect(result.matches('caboose'), isFalse);
+    });
+
+    test('throws for invalid configuration', () {
+      var globA = new Glob('a*', caseSensitive: true);
+      var globB = new Glob('b*', caseSensitive: false);
+      expect(() => globA.union(globB), throwsUnsupportedError);
+
+      globA = new Glob('a*', context: p.windows);
+      globB = new Glob('b*', context: p.url);
+      expect(() => globA.union(globB), throwsUnsupportedError);
+    });
+  });
+
   group("Glob.matches()", () {
     test("returns whether the path matches the glob", () {
       var glob = new Glob("foo*");
