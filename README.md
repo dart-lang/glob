@@ -4,6 +4,8 @@ whether a path matches a glob and listing all entities that match a glob.
 A "glob" is a pattern designed specifically to match files and directories. Most
 shells support globs natively.
 
+[![Build Status](https://travis-ci.org/dart-lang/glob.svg?branch=master)](https://travis-ci.org/dart-lang/glob)
+
 ## Usage
 
 To construct a glob, just use `new Glob()`. As with `RegExp`s, it's a good idea

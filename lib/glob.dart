@@ -110,6 +110,23 @@ class Glob implements Pattern {
 
   Glob._(this.pattern, this.context, this._ast, this.recursive);
 
+  void _assertValidComposite(Glob other) {
+    if (context.style != other.context.style) {
+      throw new UnsupportedError('Both globs must use the same context');
+    }
+    if (caseSensitive != other.caseSensitive) {
+      throw new UnsupportedError('Both globs must use the same caseSensitive');
+    }
+  }
+
+  /// Returns a new glob that is the union of this one and [other].
+  ///
+  /// Both globs must have the same path [context] and [caseSensitive] flag.
+  Glob union(Glob other) {
+    _assertValidComposite(other);
+    return new Glob('{$pattern,${other.pattern}}');
+  }
+
   /// Lists all [FileSystemEntity]s beneath [root] that match the glob.
   ///
   /// This works much like [Directory.list], but it only lists directories that
