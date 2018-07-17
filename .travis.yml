@@ -6,10 +6,7 @@ dart:
 
 # See https://docs.travis-ci.com/user/languages/dart/ for details.
 dart_task:
-  - test: --platform vm
-    xvfb: false
-  - test: --platform firefox
-    install_dartium: true
+  - test: --platform vm,firefox
   - dartanalyzer
 
 matrix:
