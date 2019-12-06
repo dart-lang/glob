@@ -66,7 +66,7 @@ final _quote = RegExp(r'[+*?{}|[\]\\().^$-]');
 /// Returns [contents] with characters that are meaningful in regular
 /// expressions backslash-escaped.
 String regExpQuote(String contents) =>
-    contents.replaceAllMapped(_quote, (char) => "\\${char[0]}");
+    contents.replaceAllMapped(_quote, (char) => '\\${char[0]}');
 
 /// Returns [path] with all its separators replaced with forward slashes.
 ///
