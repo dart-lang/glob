@@ -11,7 +11,10 @@ dart_task:
 
 jobs:
   include:
-    - dart: [2.2.0, dev]
+    - dart: 2.2.0
+      dart_task:
+        test: -p node
+    - dart: dev
       dart_task:
         test: -p node
     - dart: dev
