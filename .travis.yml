@@ -11,7 +11,11 @@ dart_task:
 
 matrix:
   include:
-    - dart_task:
+    - dart: 2.2.0
+      dart_task:
+        test: -p node
+    - dart: dev
+      dart_task:
         test: -p node
     - dart: dev
       dart_task: dartfmt
