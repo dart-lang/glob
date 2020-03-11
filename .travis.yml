@@ -6,11 +6,13 @@ dart:
 
 # See https://docs.travis-ci.com/user/languages/dart/ for details.
 dart_task:
-  - test: --platform vm,firefox,node
+  - test: --platform vm,firefox
   - dartanalyzer: --fatal-warnings --fatal-infos .
 
 matrix:
   include:
+    - dart_task:
+        test: -p node
     - dart: dev
       dart_task: dartfmt
 
