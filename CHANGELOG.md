@@ -1,3 +1,7 @@
+## 2.0.0
+
+* Migrate to null_safety
+
 ## 1.2.0
 
 * Support running on Node.js.
