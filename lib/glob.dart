@@ -49,7 +49,9 @@ class Glob implements Pattern {
   /// The parsed AST of the glob.
   final AstNode _ast;
 
-  /// This is lazily initialized by calls to [list] or [listSync].
+  /// The underlying object used to implement [list] and [listSync].
+  ///
+  /// This is lazily initialized by calls to those methods.
   ListTree? _listTree;
 
   /// Whether [context]'s current directory is absolute.
