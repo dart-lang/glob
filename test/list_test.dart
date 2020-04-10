@@ -314,7 +314,7 @@ void main() {
 }
 
 typedef ListFn = FutureOr<List<String>> Function(String glob,
-    {bool recursive, bool followLinks, bool caseSensitive});
+    {bool recursive, bool followLinks, bool? caseSensitive});
 
 /// Runs [callback] in two groups with two values of [listFn]: one that uses
 /// [Glob.list], one that uses [Glob.listSync].

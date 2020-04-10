@@ -47,25 +47,28 @@ class Glob implements Pattern {
   /// The parsed AST of the glob.
   final AstNode _ast;
 
-  ListTree _listTree;
+  /// The underlying object used to implement [list] and [listSync].
+  ///
+  /// This is lazily initialized by calls to those methods.
+  ListTree? _listTree;
 
   /// Whether [context]'s current directory is absolute.
   bool get _contextIsAbsolute =>
       _contextIsAbsoluteCache ??= context.isAbsolute(context.current);
 
-  bool _contextIsAbsoluteCache;
+  bool? _contextIsAbsoluteCache;
 
   /// Whether [pattern] could match absolute paths.
   bool get _patternCanMatchAbsolute =>
       _patternCanMatchAbsoluteCache ??= _ast.canMatchAbsolute;
 
-  bool _patternCanMatchAbsoluteCache;
+  bool? _patternCanMatchAbsoluteCache;
 
   /// Whether [pattern] could match relative paths.
   bool get _patternCanMatchRelative =>
       _patternCanMatchRelativeCache ??= _ast.canMatchRelative;
 
-  bool _patternCanMatchRelativeCache;
+  bool? _patternCanMatchRelativeCache;
 
   /// Returns [contents] with characters that are meaningful in globs
   /// backslash-escaped.
@@ -85,7 +88,7 @@ class Glob implements Pattern {
   /// regardless of case. This defaults to `false` when [context] is Windows and
   /// `true` otherwise.
   factory Glob(String pattern,
-      {p.Context context, bool recursive = false, bool caseSensitive}) {
+      {p.Context? context, bool recursive = false, bool? caseSensitive}) {
     context ??= p.context;
     caseSensitive ??= context.style == p.Style.windows ? false : true;
     if (recursive) pattern += '{,/**}';
@@ -106,14 +109,14 @@ class Glob implements Pattern {
   /// [root] defaults to the current working directory.
   ///
   /// [followLinks] works the same as for [Directory.list].
-  Stream<FileSystemEntity> list({String root, bool followLinks = true}) {
+  Stream<FileSystemEntity> list({String? root, bool followLinks = true}) {
     if (context.style != p.style) {
       throw StateError("Can't list glob \"$this\"; it matches "
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    _listTree ??= ListTree(_ast);
-    return _listTree.list(root: root, followLinks: followLinks);
+    return (_listTree ??= ListTree(_ast))
+        .list(root: root, followLinks: followLinks);
   }
 
   /// Synchronously lists all [FileSystemEntity]s beneath [root] that match the
@@ -127,21 +130,21 @@ class Glob implements Pattern {
   /// [root] defaults to the current working directory.
   ///
   /// [followLinks] works the same as for [Directory.list].
-  List<FileSystemEntity> listSync({String root, bool followLinks = true}) {
+  List<FileSystemEntity> listSync({String? root, bool followLinks = true}) {
     if (context.style != p.style) {
       throw StateError("Can't list glob \"$this\"; it matches "
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    _listTree ??= ListTree(_ast);
-    return _listTree.listSync(root: root, followLinks: followLinks);
+    return (_listTree ??= ListTree(_ast))
+        .listSync(root: root, followLinks: followLinks);
   }
 
   /// Returns whether this glob matches [path].
   bool matches(String path) => matchAsPrefix(path) != null;
 
   @override
-  Match matchAsPrefix(String path, [int start = 0]) {
+  Match? matchAsPrefix(String path, [int start = 0]) {
     // Globs are like anchored RegExps in that they only match entire paths, so
     // if the match starts anywhere after the first character it can't succeed.
     if (start != 0) return null;
