@@ -18,7 +18,7 @@ dependencies:
 
 dev_dependencies:
   test: ^1.16.0-nullsafety.9
-  test_descriptor: ^1.0.0
+  test_descriptor: ^2.0.0-nullsafety
 
 # Required to get a version solve due to cyclic deps
 dependency_overrides:

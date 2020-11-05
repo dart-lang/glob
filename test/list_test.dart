@@ -1,9 +1,6 @@
 // Copyright (c) 2014, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
-//
-// TODO: Opt in once test_descriptor is migrated
-// @dart=2.9
 
 @TestOn('vm')
 import 'dart:async';
@@ -317,7 +314,7 @@ void main() {
 }
 
 typedef ListFn = FutureOr<List<String>> Function(String glob,
-    {bool recursive, bool followLinks, bool /*?*/ caseSensitive});
+    {bool recursive, bool followLinks, bool? caseSensitive});
 
 /// Runs [callback] in two groups with two values of [listFn]: one that uses
 /// [Glob.list], one that uses [Glob.listSync].
