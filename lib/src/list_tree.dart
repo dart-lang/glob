@@ -61,7 +61,7 @@ class ListTree {
   /// Whether paths listed might overlap.
   ///
   /// If they do, we need to filter out overlapping paths.
-  bool _canOverlap;
+  final bool _canOverlap;
 
   ListTree._(this._trees) : _canOverlap = _computeCanOverlap(_trees);
 
