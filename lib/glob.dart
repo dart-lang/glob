@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'package:file/file.dart';
+import 'package:file/memory.dart';
 import 'package:path/path.dart' as p;
 
 import 'src/ast.dart';
@@ -48,10 +49,14 @@ class Glob implements Pattern {
   final AstNode _ast;
 
   /// The underlying object used to implement [list] and [listSync].
+  ///
+  /// This should not be read directly outside of [_listTreeForFileSystem].
   ListTree? _listTree;
 
   /// Keeps track of the previous file system used. If this changes then the
   /// [_listTree] must be invalidated.
+  ///
+  /// This is handled inside of [_listTreeForFileSystem].
   FileSystem? _previousFileSystem;
 
   /// Whether [context]'s current directory is absolute.
@@ -119,11 +124,7 @@ class Glob implements Pattern {
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    // Throw away our cached `_listTree` if the file system is different.
-    if (fileSystem != _previousFileSystem) _listTree = null;
-    _previousFileSystem = fileSystem;
-
-    return (_listTree ??= ListTree(_ast, fileSystem))
+    return _listTreeForFileSystem(fileSystem)
         .list(root: root, followLinks: followLinks);
   }
 
@@ -145,11 +146,7 @@ class Glob implements Pattern {
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    // Throw away our cached `_listTree` if the file system is different.
-    if (fileSystem != _previousFileSystem) _listTree = null;
-    _previousFileSystem = fileSystem;
-
-    return (_listTree ??= ListTree(_ast, fileSystem))
+    return _listTreeForFileSystem(fileSystem)
         .listSync(root: root, followLinks: followLinks);
   }
 
@@ -188,4 +185,18 @@ class Glob implements Pattern {
 
   @override
   String toString() => pattern;
+
+  /// Handles getting a possibly cached [ListTree] for a [fileSystem].
+  ListTree _listTreeForFileSystem(FileSystem fileSystem) {
+    // Don't use cached trees for in memory file systems to avoid memory leaks.
+    if (fileSystem is MemoryFileSystem) return ListTree(_ast, fileSystem);
+
+    // Throw away our cached `_listTree` if the file system is different.
+    if (fileSystem != _previousFileSystem) {
+      _listTree = null;
+      _previousFileSystem = fileSystem;
+    }
+
+    return _listTree ??= ListTree(_ast, fileSystem);
+  }
 }
