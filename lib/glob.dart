@@ -2,10 +2,11 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+import 'package:file/file.dart';
+import 'package:file/memory.dart';
 import 'package:path/path.dart' as p;
 
 import 'src/ast.dart';
-import 'src/io.dart';
 import 'src/list_tree.dart';
 import 'src/parser.dart';
 import 'src/utils.dart';
@@ -49,8 +50,14 @@ class Glob implements Pattern {
 
   /// The underlying object used to implement [list] and [listSync].
   ///
-  /// This is lazily initialized by calls to those methods.
+  /// This should not be read directly outside of [_listTreeForFileSystem].
   ListTree? _listTree;
+
+  /// Keeps track of the previous file system used. If this changes then the
+  /// [_listTree] must be invalidated.
+  ///
+  /// This is handled inside of [_listTreeForFileSystem].
+  FileSystem? _previousFileSystem;
 
   /// Whether [context]'s current directory is absolute.
   bool get _contextIsAbsolute =>
@@ -99,7 +106,8 @@ class Glob implements Pattern {
 
   Glob._(this.pattern, this.context, this._ast, this.recursive);
 
-  /// Lists all [FileSystemEntity]s beneath [root] that match the glob.
+  /// Lists all [FileSystemEntity]s beneath [root] that match the glob in the
+  /// provided [fileSystem].
   ///
   /// This works much like [Directory.list], but it only lists directories that
   /// could contain entities that match the glob. It provides no guarantees
@@ -109,18 +117,19 @@ class Glob implements Pattern {
   /// [root] defaults to the current working directory.
   ///
   /// [followLinks] works the same as for [Directory.list].
-  Stream<FileSystemEntity> list({String? root, bool followLinks = true}) {
+  Stream<FileSystemEntity> listFileSystem(FileSystem fileSystem,
+      {String? root, bool followLinks = true}) {
     if (context.style != p.style) {
       throw StateError("Can't list glob \"$this\"; it matches "
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    return (_listTree ??= ListTree(_ast))
+    return _listTreeForFileSystem(fileSystem)
         .list(root: root, followLinks: followLinks);
   }
 
   /// Synchronously lists all [FileSystemEntity]s beneath [root] that match the
-  /// glob.
+  /// glob in the provided [fileSystem].
   ///
   /// This works much like [Directory.listSync], but it only lists directories
   /// that could contain entities that match the glob. It provides no guarantees
@@ -130,13 +139,14 @@ class Glob implements Pattern {
   /// [root] defaults to the current working directory.
   ///
   /// [followLinks] works the same as for [Directory.list].
-  List<FileSystemEntity> listSync({String? root, bool followLinks = true}) {
+  List<FileSystemEntity> listFileSystemSync(FileSystem fileSystem,
+      {String? root, bool followLinks = true}) {
     if (context.style != p.style) {
       throw StateError("Can't list glob \"$this\"; it matches "
           '${context.style} paths, but this platform uses ${p.style} paths.');
     }
 
-    return (_listTree ??= ListTree(_ast))
+    return _listTreeForFileSystem(fileSystem)
         .listSync(root: root, followLinks: followLinks);
   }
 
@@ -175,4 +185,18 @@ class Glob implements Pattern {
 
   @override
   String toString() => pattern;
+
+  /// Handles getting a possibly cached [ListTree] for a [fileSystem].
+  ListTree _listTreeForFileSystem(FileSystem fileSystem) {
+    // Don't use cached trees for in memory file systems to avoid memory leaks.
+    if (fileSystem is MemoryFileSystem) return ListTree(_ast, fileSystem);
+
+    // Throw away our cached `_listTree` if the file system is different.
+    if (fileSystem != _previousFileSystem) {
+      _listTree = null;
+      _previousFileSystem = fileSystem;
+    }
+
+    return _listTree ??= ListTree(_ast, fileSystem);
+  }
 }

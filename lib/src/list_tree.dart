@@ -5,11 +5,11 @@
 import 'dart:async';
 
 import 'package:async/async.dart';
+import 'package:file/file.dart';
 import 'package:path/path.dart' as p;
 import 'package:pedantic/pedantic.dart';
 
 import 'ast.dart';
-import 'io.dart';
 import 'utils.dart';
 
 /// The errno for a file or directory not existing on Mac and Linux.
@@ -63,9 +63,13 @@ class ListTree {
   /// If they do, we need to filter out overlapping paths.
   final bool _canOverlap;
 
-  ListTree._(this._trees) : _canOverlap = _computeCanOverlap(_trees);
+  /// The file system to operate on.
+  final FileSystem _fileSystem;
 
-  factory ListTree(AstNode glob) {
+  ListTree._(this._trees, this._fileSystem)
+      : _canOverlap = _computeCanOverlap(_trees);
+
+  factory ListTree(AstNode glob, FileSystem fileSystem) {
     // The first step in constructing a tree from the glob is to simplify the
     // problem by eliminating options. [glob.flattenOptions] bubbles all options
     // (and certain ranges) up to the top level of the glob so we can deal with
@@ -84,7 +88,8 @@ class ListTree {
       // root's just ".".
       if (firstNode is LiteralNode) {
         var text = firstNode.text;
-        if (Platform.isWindows) text.replaceAll('/', '\\');
+        // Platform agnostic way of checking for Windows without `dart:io`.
+        if (p.context == p.windows) text.replaceAll('/', '\\');
         if (p.isAbsolute(text)) {
           // If the path is absolute, the root should be the only thing in the
           // first component.
@@ -97,7 +102,7 @@ class ListTree {
       _addGlob(root, components, trees);
     }
 
-    return ListTree._(trees);
+    return ListTree._(trees, fileSystem);
   }
 
   /// Add the glob represented by [components] to the tree under [root].
@@ -180,7 +185,8 @@ class ListTree {
     var group = StreamGroup<FileSystemEntity>();
     for (var rootDir in _trees.keys) {
       var dir = rootDir == '.' ? root : rootDir;
-      group.add(_trees[rootDir]!.list(dir, followLinks: followLinks));
+      group.add(
+          _trees[rootDir]!.list(dir, _fileSystem, followLinks: followLinks));
     }
     group.close();
 
@@ -197,7 +203,8 @@ class ListTree {
     root ??= '.';
     var result = _trees.keys.expand((rootDir) {
       var dir = rootDir == '.' ? root! : rootDir;
-      return _trees[rootDir]!.listSync(dir, followLinks: followLinks);
+      return _trees[rootDir]!
+          .listSync(dir, _fileSystem, followLinks: followLinks);
     });
 
     if (!_canOverlap) return result.toList();
@@ -307,9 +314,11 @@ class _ListTreeNode {
   ///
   /// This may return duplicate entities. These will be filtered out in
   /// [ListTree.list].
-  Stream<FileSystemEntity> list(String dir, {bool followLinks = true}) {
+  Stream<FileSystemEntity> list(String dir, FileSystem fileSystem,
+      {bool followLinks = true}) {
     if (isRecursive) {
-      return Directory(dir)
+      return fileSystem
+          .directory(dir)
           .list(recursive: true, followLinks: followLinks)
           .where((entity) => _matches(p.relative(entity.path, from: dir)));
     }
@@ -321,6 +330,7 @@ class _ListTreeNode {
       children!.forEach((sequence, child) {
         resultGroup.add(child.list(
             p.join(dir, (sequence.nodes.single as LiteralNode).text),
+            fileSystem,
             followLinks: followLinks));
       });
       resultGroup.close();
@@ -328,9 +338,11 @@ class _ListTreeNode {
     }
 
     return StreamCompleter.fromFuture(() async {
-      var entities =
-          await Directory(dir).list(followLinks: followLinks).toList();
-      await _validateIntermediateChildrenAsync(dir, entities);
+      var entities = await fileSystem
+          .directory(dir)
+          .list(followLinks: followLinks)
+          .toList();
+      await _validateIntermediateChildrenAsync(dir, entities, fileSystem);
 
       var resultGroup = StreamGroup<FileSystemEntity>();
       var resultController = StreamController<FileSystemEntity>(sync: true);
@@ -343,7 +355,7 @@ class _ListTreeNode {
           if (entity is! Directory) return;
           if (!sequence.matches(basename)) return;
           var stream = child
-              .list(p.join(dir, basename), followLinks: followLinks)
+              .list(p.join(dir, basename), fileSystem, followLinks: followLinks)
               .handleError((_) {}, test: (error) {
             // Ignore errors from directories not existing. We do this here so
             // that we only ignore warnings below wild cards. For example, the
@@ -368,8 +380,8 @@ class _ListTreeNode {
   ///
   /// This ensures that listing "foo/bar/*" fails on case-sensitive systems if
   /// "foo/bar" doesn't exist.
-  Future _validateIntermediateChildrenAsync(
-      String dir, List<FileSystemEntity> entities) async {
+  Future _validateIntermediateChildrenAsync(String dir,
+      List<FileSystemEntity> entities, FileSystem fileSystem) async {
     if (_caseSensitive) return;
 
     for (var entry in children!.entries) {
@@ -384,7 +396,8 @@ class _ListTreeNode {
       // We know this will fail, we're just doing it to force dart:io to emit
       // the exception it would if we were listing case-sensitively.
       await child
-          .list(p.join(dir, (sequence.nodes.single as LiteralNode).text))
+          .list(p.join(dir, (sequence.nodes.single as LiteralNode).text),
+              fileSystem)
           .toList();
     }
   }
@@ -394,9 +407,11 @@ class _ListTreeNode {
   ///
   /// This may return duplicate entities. These will be filtered out in
   /// [ListTree.listSync].
-  Iterable<FileSystemEntity> listSync(String dir, {bool followLinks = true}) {
+  Iterable<FileSystemEntity> listSync(String dir, FileSystem fileSystem,
+      {bool followLinks = true}) {
     if (isRecursive) {
-      return Directory(dir)
+      return fileSystem
+          .directory(dir)
           .listSync(recursive: true, followLinks: followLinks)
           .where((entity) => _matches(p.relative(entity.path, from: dir)));
     }
@@ -409,12 +424,13 @@ class _ListTreeNode {
         var child = entry.value;
         return child.listSync(
             p.join(dir, (sequence.nodes.single as LiteralNode).text),
+            fileSystem,
             followLinks: followLinks);
       });
     }
 
-    var entities = Directory(dir).listSync(followLinks: followLinks);
-    _validateIntermediateChildrenSync(dir, entities);
+    var entities = fileSystem.directory(dir).listSync(followLinks: followLinks);
+    _validateIntermediateChildrenSync(dir, entities, fileSystem);
 
     return entities.expand((entity) {
       var entities = <FileSystemEntity>[];
@@ -427,7 +443,8 @@ class _ListTreeNode {
           .expand((sequence) {
         try {
           return children![sequence]!
-              .listSync(p.join(dir, basename), followLinks: followLinks)
+              .listSync(p.join(dir, basename), fileSystem,
+                  followLinks: followLinks)
               .toList();
         } on FileSystemException catch (error) {
           // Ignore errors from directories not existing. We do this here so
@@ -454,7 +471,7 @@ class _ListTreeNode {
   /// This ensures that listing "foo/bar/*" fails on case-sensitive systems if
   /// "foo/bar" doesn't exist.
   void _validateIntermediateChildrenSync(
-      String dir, List<FileSystemEntity> entities) {
+      String dir, List<FileSystemEntity> entities, FileSystem fileSystem) {
     if (_caseSensitive) return;
 
     children!.forEach((sequence, child) {
@@ -468,7 +485,8 @@ class _ListTreeNode {
       // directory to force `dart:io` to throw an error. This allows us to
       // ensure that listing "foo/bar/*" fails on case-sensitive systems if
       // "foo/bar" doesn't exist.
-      child.listSync(p.join(dir, (sequence.nodes.single as LiteralNode).text));
+      child.listSync(
+          p.join(dir, (sequence.nodes.single as LiteralNode).text), fileSystem);
     });
   }
 
