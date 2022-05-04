@@ -508,7 +508,7 @@ extension on Stream<FileSystemEntity> {
 
 extension on FileSystemException {
   bool get isMissing {
-    final errorCode = osError!.errorCode;
+    final errorCode = osError?.errorCode;
     return errorCode == _enoent || errorCode == _enoentWin;
   }
 }
