@@ -23,7 +23,7 @@ jobs:
         sdk: [dev]
     steps:
       - uses: actions/checkout@v2
-      - uses: dart-lang/setup-dart@v1.0
+      - uses: dart-lang/setup-dart@v1.3
         with:
           channel: ${{ matrix.sdk }}
       - id: install
