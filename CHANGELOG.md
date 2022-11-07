@@ -1,6 +1,6 @@
 ## 2.1.1
 
-* Updated the dependecy on `package:file` to require at least `6.1.3`.
+* Updated the dependency on `package:file` to require at least `6.1.3`.
 
 ## 2.1.0
 
