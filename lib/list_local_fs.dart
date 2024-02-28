@@ -4,6 +4,7 @@
 
 import 'package:file/file.dart';
 import 'package:file/local.dart';
+
 import 'glob.dart';
 
 /// Platform specific extensions for where `dart:io` exists, which use the
